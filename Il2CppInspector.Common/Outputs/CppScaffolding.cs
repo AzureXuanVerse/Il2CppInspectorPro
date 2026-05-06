@@ -252,8 +252,19 @@ namespace Il2CppInspector.Outputs
                 writeHeader();
                 writeSectionHeader("IL2CPP application-specific type definition addresses");
 
+                var emittedTypeInfoNames = new HashSet<string>();
+
                 foreach (var type in _model.Types.Values.Where(t => t.TypeClassAddress != 0xffffffff_ffffffff))
                 {
+                // il2cpp-types.h only declares concrete C++ app types; some metadata-only entries
+                // (eg generic parameters such as "T") can resolve to duplicate/undefined names and
+                // break compilation if emitted here.
+                    if (type.CppType == null && type.CppValueType == null)
+                        continue;
+
+                    if (!emittedTypeInfoNames.Add(type.Name))
+                        continue;
+
                     writeCode($"DO_TYPEDEF(0x{type.TypeClassAddress - _model.Package.BinaryImage.ImageBase:X8}, {type.Name});");
                 }
             }
