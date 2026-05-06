@@ -717,7 +717,13 @@ namespace Il2CppInspector.Reflection
         public bool IsSerializable => (Attributes & TypeAttributes.Serializable) == TypeAttributes.Serializable;
 #pragma warning restore SYSLIB0050
         public bool IsSpecialName => (Attributes & TypeAttributes.SpecialName) == TypeAttributes.SpecialName;
-        public bool IsValueType => BaseType?.FullName == "System.ValueType";
+        
+        // L-NOTE: This must not check BaseType, as this is not what dictates whether
+        // a type is considered a "ValueType". System.Enum inherits from ValueType
+        // but is considered (and treated as) a class everywhere, which would not be caught
+        // by the aforementioned check
+        public bool IsValueType => genericTypeDefinition?.IsValueType 
+                                   ?? Definition.Bitfield.ValueType;
 
         // Helper function for determining if using this type as a field, parameter etc. requires that field or method to be declared as unsafe
         public bool RequiresUnsafeContext => IsPointer || (HasElementType && ElementType.RequiresUnsafeContext);
@@ -1134,23 +1140,37 @@ namespace Il2CppInspector.Reflection
         public string GetModifierString() {
             var modifiers = new StringBuilder(GetAccessModifierString());
 
-            // An abstract sealed class is a static class
-            if (IsAbstract && IsSealed)
-                modifiers.Append("static ");
-            else {
-                if (IsAbstract && !IsInterface)
+            switch (this)
+            {
+                // An abstract sealed class is a static class
+                case { IsAbstract: true, IsSealed: true }:
+                    modifiers.Append("static ");
+                    break;
+                case { IsAbstract: true, IsInterface: false }:
                     modifiers.Append("abstract ");
-                if (IsSealed && !IsValueType && !IsEnum)
+                    break;
+                case { IsSealed: true, IsValueType: false, IsEnum: false }:
                     modifiers.Append("sealed ");
+                    break;
             }
-            if (IsInterface)
-                modifiers.Append("interface ");
-            else if (IsValueType)
-                modifiers.Append("struct ");
-            else if (IsEnum)
-                modifiers.Append("enum ");
-            else
-                modifiers.Append("class ");
+
+            switch (this)
+            {
+                // IsEnum needs to be checked before IsValueType,
+                // as enums are both enums and ValueTypes
+                case { IsEnum: true }:
+                    modifiers.Append("enum ");
+                    break;
+                case { IsValueType: true }:
+                    modifiers.Append("struct ");
+                    break;
+                case { IsInterface: true }:
+                    modifiers.Append("interface ");
+                    break;
+                default:
+                    modifiers.Append("class ");
+                    break;
+            }
 
             return modifiers.ToString();
         }

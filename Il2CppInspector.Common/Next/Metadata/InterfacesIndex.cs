@@ -6,15 +6,14 @@ public struct InterfacesIndex(int value) : IIndexType<InterfacesIndex>, IReadabl
 {
     public const string TagPrefix = nameof(InterfacesIndex);
 
-    static string IIndexType<InterfacesIndex>.TagPrefix => TagPrefix; 
-    static StructVersion IIndexType<InterfacesIndex>.AddedVersion => MetadataVersions.V390;
+    static string IIndexType<InterfacesIndex>.TagPrefix => TagPrefix;
 
     private int _value = value;
 
-    public static int Size(in StructVersion version = default, bool is32Bit = false)
-        => IIndexType<InterfacesIndex>.IndexSize(version, is32Bit);
+    public static int Size(in StructVersion version = default, in ReaderConfig config = default)
+        => IIndexType<InterfacesIndex>.IndexSize(version, config);
 
-    public void Read<TReader>(ref TReader reader, in StructVersion version = default) where TReader : IReader, allows ref struct
+    public void Read<TReader>(ref Reader<TReader> reader, in StructVersion version = default) where TReader : IReader, allows ref struct
     {
         _value = IIndexType<InterfacesIndex>.ReadIndex(ref reader, in version);
     }

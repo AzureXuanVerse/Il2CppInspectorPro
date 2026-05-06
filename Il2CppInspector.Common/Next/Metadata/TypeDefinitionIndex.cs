@@ -7,14 +7,13 @@ public struct TypeDefinitionIndex(int value) : IIndexType<TypeDefinitionIndex>, 
     public const string TagPrefix = nameof(TypeDefinitionIndex);
 
     static string IIndexType<TypeDefinitionIndex>.TagPrefix => TagPrefix;
-    static StructVersion IIndexType<TypeDefinitionIndex>.AddedVersion => MetadataVersions.V390;
 
     private int _value = value;
 
-    public static int Size(in StructVersion version = default, bool is32Bit = false)
-        => IIndexType<TypeDefinitionIndex>.IndexSize(version, is32Bit);
+    public static int Size(in StructVersion version = default, in ReaderConfig config = default)
+        => IIndexType<TypeDefinitionIndex>.IndexSize(version, config);
 
-    public void Read<TReader>(ref TReader reader, in StructVersion version = default) where TReader : IReader, allows ref struct
+    public void Read<TReader>(ref Reader<TReader> reader, in StructVersion version = default) where TReader : IReader, allows ref struct
     {
         _value = IIndexType<TypeDefinitionIndex>.ReadIndex(ref reader, in version);
     }

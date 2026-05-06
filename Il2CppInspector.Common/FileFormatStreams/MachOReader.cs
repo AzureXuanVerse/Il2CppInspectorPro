@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using VersionedSerialization;
 
 namespace Il2CppInspector
 {
@@ -194,7 +195,7 @@ namespace Il2CppInspector
                 var rels = ReadArray<MachO_relocation_info>(section.ImageRelocOffset, section.NumRelocEntries);
 
                 // TODO: Implement Mach-O relocations
-                if (rels.Any()) {
+                if (rels.Length > 0) {
                     AnsiConsole.WriteLine("Mach-O file contains relocations (feature not yet implemented)");
                     break;
                 }
@@ -284,9 +285,13 @@ namespace Il2CppInspector
                         || ntype == MachO_NType.N_SO || ntype == MachO_NType.N_OSO)
                         continue;
 
-                var type = ntype == MachO_NType.N_FUN? SymbolType.Function
-                    : ntype == MachO_NType.N_STSYM || ntype == MachO_NType.N_GSYM || ntype == MachO_NType.N_SECT? SymbolType.Name
-                    : SymbolType.Unknown;
+                var type = ntype switch
+                {
+                    MachO_NType.N_FUN or MachO_NType.N_MAIN => SymbolType.Function,
+                    MachO_NType.N_STSYM or MachO_NType.N_GSYM or MachO_NType.N_SECT
+                        or MachO_NType.N_LCSYM or MachO_NType.N_ROSYM => SymbolType.Name,
+                    _ => SymbolType.Unknown
+                };
 
                 if (type == SymbolType.Unknown) {
                     AnsiConsole.WriteLine($"Unknown symbol type: {((int) ntype):x2}   {value:x16}   {name}");
@@ -306,10 +311,13 @@ namespace Il2CppInspector
                 return;
             }
 
-            if (chainedFixupsHeader.ImportsFormat != 1 /* DYLD_CHAINED_IMPORT */)
+            var importsFormat = (MachODyldChainedImportFormat)chainedFixupsHeader.ImportsFormat;
+            if (importsFormat != MachODyldChainedImportFormat.DYLD_CHAINED_IMPORT
+                && importsFormat != MachODyldChainedImportFormat.DYLD_CHAINED_IMPORT_ADDEND
+                && importsFormat != MachODyldChainedImportFormat.DYLD_CHAINED_IMPORT_ADDEND64)
             {
                 AnsiConsole.WriteLine($"Unsupported chained fixups import format: {chainedFixupsHeader.ImportsFormat}");
-                return;
+                // Rebase chains can still be processed even if bind import entries are in an unknown format.
             }
 
             //var importsBase = info.Offset + chainedFixupsHeader.ImportsOffset;
@@ -334,7 +342,7 @@ namespace Il2CppInspector
                 var pointerFormat = (MachODyldChainedPtr)startsInfo.PointerFormat;
 
                 var pages = ReadPrimitiveArray<ushort>(
-                    startsBase + startOffset + MachODyldChainedStartsInSegment.Size(), startsInfo.PageCount);
+                    startsBase + startOffset + MachODyldChainedStartsInSegment.StructSize(), startsInfo.PageCount);
 
                 for (var i = 0; i < pages.Length; i++)
                 {

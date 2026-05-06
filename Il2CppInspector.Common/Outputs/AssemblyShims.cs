@@ -88,7 +88,7 @@ namespace Il2CppInspector.Outputs
         private TypeDef tokenAttribute;
 
         // Runtime attributes we need to add
-        private TypeInfo inlineArrayAttribute;
+        private TypeInfo? inlineArrayAttribute;
 
         // The namespace for our custom types
         private const string rootNamespace = "Il2CppInspector.DLL";
@@ -168,7 +168,7 @@ namespace Il2CppInspector.Outputs
         {
             if (model.Package.Version >= MetadataVersions.V1040)
             {
-                inlineArrayAttribute = model.TypesByFullName["System.Runtime.CompilerServices.InlineArrayAttribute"];
+                inlineArrayAttribute = model.TypesByFullName.GetValueOrDefault("System.Runtime.CompilerServices.InlineArrayAttribute");
             }
         }
 
@@ -303,7 +303,7 @@ namespace Il2CppInspector.Outputs
             if (model.Package.Version >= MetadataVersions.V1040)
             {
                 // L-TODO: Verify if we actually need to add the attribute ourselves; it might just be preserved
-                if (type.HasInlineArray)
+                if (type.HasInlineArray && inlineArrayAttribute != null)
                 {
                     var typeRef = GetTypeRef(module, inlineArrayAttribute);
                     var ctorRef = new MemberRefUser(typeRef.Module, ".ctor",
@@ -585,6 +585,9 @@ namespace Il2CppInspector.Outputs
                     case CustomAttributeArgument[] argumentArray:
                         return new CAArgument(new SZArraySig(typeSig),
                             argumentArray.Select(GetArgument).ToList());
+                    // Needed for nested arrays
+                    case CustomAttributeArgument nestedArgument:
+                        return GetArgument(nestedArgument);
                     default:
                         return new CAArgument(typeSig, argument.Value);
                 }

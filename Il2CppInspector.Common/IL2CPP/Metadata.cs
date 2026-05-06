@@ -101,7 +101,7 @@ namespace Il2CppInspector
             // Set object versioning for Bin2Object from metadata version
             Version = new StructVersion(Header.Version);
 
-            if (Version < MetadataVersions.V160 || Version > MetadataVersions.V1050) {
+            if (Version < MetadataVersions.V160 || Version > MetadataVersions.V1060) {
                 throw new InvalidOperationException($"The supplied metadata file is not of a supported version ({Header.Version}).");
             }
 
@@ -134,15 +134,15 @@ namespace Il2CppInspector
                 // as we do not have it available at this point.
                 // thankfully, we can just guess the size based off the three available options and the known total size of
                 // a type entry that uses TypeIndex.
-                var expectedEventDefinitionSize = Header.Events.SectionSize / Header.Events.Count;
-                var maxEventDefinitionSize = Il2CppEventDefinition.Size(tempVersion);
+                var actualSize = Header.InterfaceOffsets.SectionSize / Header.InterfaceOffsets.Count;
+                var maxSize = Il2CppInterfaceOffsetPair.StructSize(tempVersion);
 
                 int typeIndexSize;
-                if (expectedEventDefinitionSize == maxEventDefinitionSize)
+                if (actualSize == maxSize)
                     typeIndexSize = sizeof(int);
-                else if (expectedEventDefinitionSize == maxEventDefinitionSize - 2)
+                else if (actualSize == maxSize - 2)
                     typeIndexSize = sizeof(ushort);
-                else if (expectedEventDefinitionSize == maxEventDefinitionSize - 3)
+                else if (actualSize == maxSize - 3)
                     typeIndexSize = sizeof(byte);
                 else
                     throw new InvalidOperationException("Could not determine TypeIndex size based on the metadata header");
@@ -171,6 +171,16 @@ namespace Il2CppInspector
                 {
                     var methodIndexSize = GetIndexSize(Header.Methods.Count);
                     fullTag += $"_{MethodIndex.TagPrefix}{methodIndexSize}";
+                }
+
+                if (Version >= MetadataVersions.V1060)
+                {
+                    var genericParameterIndexSize = GetIndexSize(Header.GenericParameters.Count);
+                    var fieldIndexSize = GetIndexSize(Header.Fields.Count);
+                    var defaultValueDataIndex = GetIndexSize(Header.FieldAndParameterDefaultValueData.Count);
+                    fullTag += $"_{GenericParameterIndex.TagPrefix}{genericParameterIndexSize}"
+                        + $"_{FieldIndex.TagPrefix}{fieldIndexSize}"
+                        + $"_{DefaultValueDataIndex.TagPrefix}{defaultValueDataIndex}";
                 }
 
                 Version = new StructVersion(Version.Major, Version.Minor, fullTag);
@@ -237,6 +247,8 @@ namespace Il2CppInspector
             InterfaceOffsets = ReadMetadataArray<Il2CppInterfaceOffsetPair>(Header.InterfaceOffsetsOffset, Header.InterfaceOffsetsSize, Header.InterfaceOffsets);
             VTableMethodIndices = ReadMetadataPrimitiveArray<uint>(Header.VTableMethodsOffset, Header.VTableMethodsSize, Header.VtableMethods);
 
+            var useCompressedAssemblyPublicKeys = Version == MetadataVersions.V242 || Version >= MetadataVersions.V244;
+
             if (Version >= MetadataVersions.V160) 
             {
                 // In v24.4 hashValueIndex was removed from Il2CppAssemblyNameDefinition, which is a field in Il2CppAssemblyDefinition
@@ -250,6 +262,7 @@ namespace Il2CppInspector
                         changedAssemblyDefStruct = true;
 
                     Version = MetadataVersions.V244;
+                    useCompressedAssemblyPublicKeys = true;
                 }
 
                 Assemblies = ReadMetadataArray<Il2CppAssemblyDefinition>(Header.AssembliesOffset, Header.AssembliesSize, Header.Assemblies);
@@ -346,7 +359,7 @@ namespace Il2CppInspector
             }
 
             // These are stored in a special way, so we read them in advance.
-            if (Version == MetadataVersions.V242 || Version >= MetadataVersions.V244)
+            if (useCompressedAssemblyPublicKeys)
             {
                 var stringOffset = Version >= MetadataVersions.V380
                     ? Header.Strings.Offset
@@ -404,17 +417,25 @@ namespace Il2CppInspector
         public ImmutableArray<T> ReadMetadataPrimitiveArray<T>(int oldOffset, int oldSize, Il2CppSectionMetadata newMetadata)
             where T : unmanaged
         {
-            return Version >= MetadataVersions.V380
-                ? ReadPrimitiveArray<T>(newMetadata.Offset, newMetadata.Count)
-                : ReadPrimitiveArray<T>(oldOffset, oldSize / Unsafe.SizeOf<T>());
+            if (Version >= MetadataVersions.V380)
+            {
+                Debug.Assert(newMetadata.Count * Unsafe.SizeOf<T>() == newMetadata.SectionSize);
+                return ReadPrimitiveArray<T>(newMetadata.Offset, newMetadata.Count);
+            }
+
+            return ReadPrimitiveArray<T>(oldOffset, oldSize / Unsafe.SizeOf<T>());
         }
 
         public ImmutableArray<T> ReadMetadataArray<T>(int oldOffset, int oldSize, Il2CppSectionMetadata newMetadata)
             where T : IReadable, new()
         {
-            return Version >= MetadataVersions.V380
-                ? ReadVersionedObjectArray<T>(newMetadata.Offset, newMetadata.Count)
-                : ReadVersionedObjectArray<T>(oldOffset, oldSize / Sizeof<T>());
+            if (Version >= MetadataVersions.V380)
+            {
+                Debug.Assert(newMetadata.Count * Sizeof<T>() == newMetadata.SectionSize);
+                return ReadVersionedObjectArray<T>(newMetadata.Offset, newMetadata.Count);
+            }
+
+            return ReadVersionedObjectArray<T>(oldOffset, oldSize / Sizeof<T>());
         }
 
         // Save metadata to file, overwriting if necessary
@@ -424,6 +445,7 @@ namespace Il2CppInspector
             CopyTo(outFile);
         }
 
-        public int Sizeof<T>() where T : IReadable => T.Size(Version, Is32Bit);
+        public int Sizeof<T>() where T : IReadable => T.Size(Version, new ReaderConfig(Is32Bit));
     }
 }
+
