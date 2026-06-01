@@ -281,7 +281,7 @@ app::String* ToString(app::Object_1* Object);
 
 // Helper function to check if a metadata usage pointer is initialized
 template&lt;typename T&gt; bool il2cppi_is_initialized(T* metadataItem) {
-#if __IL2CPP_METADATA_VERISON &lt; 270
+#if __IL2CPP_METADATA_VERSION &lt; 270
  return *metadataItem != 0;
 #else
  // Metadata &gt;=27 (Unity 2020.2)
