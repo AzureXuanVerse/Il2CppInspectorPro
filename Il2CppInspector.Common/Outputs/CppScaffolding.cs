@@ -344,10 +344,11 @@ namespace Il2CppInspector.Outputs
 
             // Write Visual Studio project and solution files
             var projectGuid = Guid.NewGuid();
-            var projectFile = projectName + ".vcxproj";
+            var projectFile = sanitizedProjectName + ".vcxproj";
 
             WriteIfNotExists(Path.Combine(projectPath, projectFile),
-                Resources.CppProjTemplate.Replace("%PROJECTGUID%", projectGuid.ToString()));
+                Resources.CppProjTemplate.Replace("%PROJECTGUID%", projectGuid.ToString())
+                    .Replace("%PROJECTNAME%", sanitizedProjectName));
 
             var guid1 = Guid.NewGuid();
             var guid2 = Guid.NewGuid();
@@ -382,7 +383,7 @@ namespace Il2CppInspector.Outputs
 
             var sln = Resources.CppSlnTemplate
                 .Replace("%PROJECTGUID%", projectGuid.ToString())
-                .Replace("%PROJECTNAME%", projectName)
+                .Replace("%PROJECTNAME%", sanitizedProjectName)
                 .Replace("%PROJECTFILE%", projectFile)
                 .Replace("%SOLUTIONGUID%", solutionGuid.ToString());
 

@@ -528,8 +528,8 @@ DWORD WINAPI UnloadWatcherThread(LPVOID lpParam)
       &lt;PropertyGroup Label="Globals"&gt;
       &lt;!--&lt;VCProjectVersion&gt;16.0&lt;/VCProjectVersion&gt;--&gt;
       &lt;Keyword&gt;Win32Proj&lt;/Keyword&gt;
-      &lt;ProjectGuid&gt;{%PROJECTGUID}&lt;/ProjectGuid&gt;
-    &lt;RootNamespace&gt;{%PROJECTNAME}&lt;/RootNamespace&gt;
+      &lt;ProjectGuid&gt;{%PROJECTGUID%}&lt;/ProjectGuid&gt;
+    &lt;RootNamespace&gt;%PROJECTNAME%&lt;/RootNamespace&gt;
     &lt;!--&lt;WindowsTargetPlatformVersion&gt;10.0&lt;/WindowsTargetPlatformVersion&gt;--&gt;
   &lt;/PropertyGroup&gt;
   &lt;Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" /&gt;
