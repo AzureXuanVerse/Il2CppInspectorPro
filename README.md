@@ -6,6 +6,18 @@ Automates the creation of a Visual Studio solution tailored for runtime manipula
 
 ![Il2CppInspector GUI](docs/GUI_Preview.png)
 
+## Project Status
+
+Il2CppInspectorPro is no longer actively maintained. Development and support
+have moved to [URKit](https://github.com/Jadis0x/URKit).
+
+For current Unity Mono and IL2CPP modding projects, please use URKit. It
+provides native C++ SDK generation, runtime mod loading, Unity helper APIs,
+hooks, and ImGui overlay support.
+
+This repository remains available for reference, but new features and support
+will not be provided here.
+
 ## Features
 
 ### Dual Loading Modes
@@ -51,7 +63,3 @@ C++ wrapper for the IL2CPP domain.
 ### Hooking Scaffold
 * Pre-linked with **Microsoft Detours**.
 * Clean entry point in `main.cpp` for persistent hooks and patches.
-
-### Recommended Project
-
-If you are looking to create native C++ mods for Mono or IL2CPP Unity games, check out [URKit](https://github.com/Jadis0x/URKit).
