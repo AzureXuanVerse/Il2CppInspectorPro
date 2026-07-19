@@ -51,3 +51,7 @@ C++ wrapper for the IL2CPP domain.
 ### Hooking Scaffold
 * Pre-linked with **Microsoft Detours**.
 * Clean entry point in `main.cpp` for persistent hooks and patches.
+
+### Recommended Project
+
+If you are looking to create native C++ mods for Mono or IL2CPP Unity games, check out [URKit](https://github.com/Jadis0x/URKit).
